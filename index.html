@@ -97,9 +97,9 @@
 
   <!-- A-Frame Scene -->
   <a-scene
-    mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001; missTolerance: 5; warmupTolerance: 5; showStats: true;"
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: #tracking-overlay; uiScanning: #tracking-overlay; uiError: #tracking-overlay;"
     color-space="sRGB"
-    renderer="colorManagement: true; physicallyCorrectLights: true; precision: high;"
+    renderer="colorManagement: true; physicallyCorrectLights: true;"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
 
@@ -109,107 +109,114 @@
               raycaster="far: 10000; objects: .clickable"></a-camera>
 
     <!-- Target #0 -->
-    <a-entity mindar-image-target="targetIndex: 0" smooth-tracking>
-      <a-entity id="video-container-0" position="0 0 0" rotation="0 0 0">
-        <a-plane
-          id="video-plane-0"
-          class="clickable"
-          position="0 0 0"
-          width="1"
-          height="1"
-          rotation="0 0 0"
-          material="shader: flat; side: double; transparent: true; opacity: 1">
-        </a-plane>
-      </a-entity>
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-plane
+        id="video-plane-0"
+        class="clickable"
+        position="0 0 0"
+        rotation="0 0 0"
+        material="shader: flat; side: double; transparent: true; opacity: 1">
+      </a-plane>
     </a-entity>
 
     <!-- Target #1 -->
-    <a-entity mindar-image-target="targetIndex: 1" smooth-tracking>
-      <a-entity id="video-container-1" position="0 0 0" rotation="0 0 0">
-        <a-plane
-          id="video-plane-1"
-          class="clickable" 
-          position="0 0 0"
-          width="1"
-          height="1"
-          rotation="0 0 0"
-          material="shader: flat; side: double; transparent: true; opacity: 1">
-        </a-plane>
-      </a-entity>
+    <a-entity mindar-image-target="targetIndex: 1">
+      <a-plane
+        id="video-plane-1"
+        class="clickable"
+        position="0 0 0"
+        rotation="0 0 0"
+        material="shader: flat; side: double; transparent: true; opacity: 1">
+      </a-plane>
     </a-entity>
   </a-scene>
 
   <script>
-    // Define smooth tracking component for better stability
-    AFRAME.registerComponent('smooth-tracking', {
-      schema: {
-        smoothingFactor: {type: 'number', default: 0.3}
-      },
-      init: function() {
-        this.originalPosition = new THREE.Vector3();
-        this.originalRotation = new THREE.Euler();
-        this.smoothedPosition = new THREE.Vector3();
-        this.smoothedRotation = new THREE.Euler();
-        
-        this.el.addEventListener('targetFound', () => {
-          this.originalPosition.copy(this.el.object3D.position);
-          this.originalRotation.copy(this.el.object3D.rotation);
-          this.smoothedPosition.copy(this.originalPosition);
-          this.smoothedRotation.copy(this.originalRotation);
-        });
-      },
-      tick: function() {
-        if (!this.el.object3D.visible) return;
-        
-        // Apply smoothing to position
-        this.smoothedPosition.x += (this.el.object3D.position.x - this.smoothedPosition.x) * this.data.smoothingFactor;
-        this.smoothedPosition.y += (this.el.object3D.position.y - this.smoothedPosition.y) * this.data.smoothingFactor;
-        this.smoothedPosition.z += (this.el.object3D.position.z - this.smoothedPosition.z) * this.data.smoothingFactor;
-        
-        // Apply smoothing to rotation
-        this.smoothedRotation.x += (this.el.object3D.rotation.x - this.smoothedRotation.x) * this.data.smoothingFactor;
-        this.smoothedRotation.y += (this.el.object3D.rotation.y - this.smoothedRotation.y) * this.data.smoothingFactor;
-        this.smoothedRotation.z += (this.el.object3D.rotation.z - this.smoothedRotation.z) * this.data.smoothingFactor;
-        
-        // Apply the smoothed values
-        this.el.object3D.position.copy(this.smoothedPosition);
-        this.el.object3D.rotation.copy(this.smoothedRotation);
-      }
-    });
-
     const videoConfig = [
       {
         targetIndex: 0,
         videoUrl: "./videos/video1.mp4",
-        planeId: "video-plane-0",
-        containerId: "video-container-0"
+        planeId: "video-plane-0"
       },
       {
         targetIndex: 1,
-        videoUrl: "./videos/video2.mp4", 
-        planeId: "video-plane-1",
-        containerId: "video-container-1"
+        videoUrl: "./videos/video2.mp4",
+        planeId: "video-plane-1"
       }
     ];
 
-    window.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function () {
       const sceneEl = document.querySelector('a-scene');
       const trackingOverlay = document.getElementById('tracking-overlay');
-
-      // Initialize tracking state
-      let targetsFound = videoConfig.map(() => false);
+      
+      // Explicitly try to start AR on page load (after a small delay to ensure DOM is ready)
+      setTimeout(() => {
+        // First user interaction with the page
+        document.body.addEventListener('click', function bodyClick() {
+          const mindARComponent = sceneEl.components['mindar-image'];
+          if (mindARComponent && typeof mindARComponent.start === 'function') {
+            mindARComponent.start();
+            console.log("MindAR scanner started after user interaction");
+          }
+          document.body.removeEventListener('click', bodyClick);
+        }, { once: true });
+        
+        // Also try to start on touchstart for mobile
+        document.body.addEventListener('touchstart', function bodyTouch() {
+          const mindARComponent = sceneEl.components['mindar-image'];
+          if (mindARComponent && typeof mindARComponent.start === 'function') {
+            mindARComponent.start();
+            console.log("MindAR scanner started after user touch");
+          }
+          document.body.removeEventListener('touchstart', bodyTouch);
+        }, { once: true });
+      }, 1000);
       
       sceneEl.addEventListener('loaded', function () {
         console.log("A-Frame scene loaded");
-
+        
         videoConfig.forEach(config => {
           setupVideoTarget(config);
         });
+        
+        // Try to start MindAR after scene is loaded
+        const mindARComponent = sceneEl.components['mindar-image'];
+        if (mindARComponent && typeof mindARComponent.start === 'function') {
+          try {
+            mindARComponent.start();
+            console.log("MindAR scanner autostarted");
+          } catch (err) {
+            console.error("Error starting MindAR:", err);
+          }
+        } else {
+          console.warn("MindAR component not found or start method not available");
+        }
+      });
+      
+      // Listen for camera permission request
+      sceneEl.addEventListener('camera-permission-requested', function() {
+        console.log("Camera permission requested");
+      });
+      
+      // Listen for camera setup complete
+      sceneEl.addEventListener('camera-init', function() {
+        console.log("Camera initialized");
+      });
+      
+      // Listen for AR system errors
+      sceneEl.addEventListener('arError', function(event) {
+        console.error("AR error:", event.detail);
+        // Update overlay with error message
+        const qrHint = document.querySelector('.qr-hint');
+        if (qrHint) {
+          qrHint.textContent = "Camera error. Please refresh and allow camera access.";
+        }
       });
 
       document.addEventListener('visibilitychange', function () {
         videoConfig.forEach(config => {
-          const videoElement = document.querySelector(`#${config.planeId}`).getObject3D('mesh').material.map?.image;
+          const plane = document.querySelector(`#${config.planeId}`);
+          const videoElement = plane.getObject3D('mesh')?.material?.map?.image;
           if (videoElement && document.hidden) {
             if (!videoElement.paused) videoElement.pause();
           }
@@ -219,7 +226,6 @@
 
     function setupVideoTarget(config) {
       const plane = document.querySelector(`#${config.planeId}`);
-      const container = document.querySelector(`#${config.containerId}`);
       const targetEntity = document.querySelector(`a-entity[mindar-image-target="targetIndex: ${config.targetIndex}"]`);
       const trackingOverlay = document.getElementById('tracking-overlay');
 
@@ -227,10 +233,10 @@
       video.src = config.videoUrl;
       video.playsInline = true;
       video.loop = true;
+      video.muted = true; // Start muted to help with autoplay
       video.setAttribute("preload", "auto");
-      video.muted = false; // Ensure audio is not muted
       
-      // Important: Wait for video metadata to load for accurate dimensions
+      // Wait for video metadata to load
       video.addEventListener('loadedmetadata', function() {
         // Calculate aspect ratio from the actual video
         const aspectRatio = video.videoHeight / video.videoWidth;
@@ -242,76 +248,54 @@
         console.log(`Video dimensions set: ${video.videoWidth}x${video.videoHeight}, aspect ratio: ${aspectRatio}`);
       });
 
-      // Create video texture with high quality settings
+      // Create video texture
       const texture = new THREE.VideoTexture(video);
       texture.minFilter = THREE.LinearFilter;
       texture.magFilter = THREE.LinearFilter;
       texture.format = THREE.RGBFormat;
-      texture.encoding = THREE.sRGBEncoding;
 
       // Apply video texture to plane
       plane.getObject3D('mesh').material.map = texture;
       plane.getObject3D('mesh').material.needsUpdate = true;
-      plane.getObject3D('mesh').material.opacity = 1;
 
-      // Handle audio context activation
-      const enableAudio = () => {
-        // Create a temporary audio context to unlock audio on iOS
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        // Create and immediately play a short silent buffer
-        const buffer = audioContext.createBuffer(1, 1, 22050);
-        const source = audioContext.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContext.destination);
-        source.start(0);
-        
-        // Remove the audio activation event listeners
-        document.removeEventListener('touchstart', enableAudio);
-        document.removeEventListener('click', enableAudio);
-      };
+      // Try to preload the video
+      video.load();
       
-      // Add event listeners for user interaction to enable audio
-      document.addEventListener('touchstart', enableAudio, { once: true });
-      document.addEventListener('click', enableAudio, { once: true });
+      // Attempt to start video playback (likely will fail but will be ready)
+      try {
+        video.play().catch(e => {
+          console.log("Initial video play prevented, will retry on target found");
+        });
+      } catch (e) {
+        console.log("Initial video play error:", e);
+      }
 
       // Handle target found event
       targetEntity.addEventListener("targetFound", function () {
         console.log(`Target ${config.targetIndex} found`);
+        
+        // Hide scanning overlay when target is found
         trackingOverlay.classList.add('hidden');
         
-        // Get the target dimensions from MindAR
-        const mindARComponent = document.querySelector('a-scene').components['mindar-image'];
-        if (mindARComponent && mindARComponent.imageTargetDimensions) {
-          const targetDimensions = mindARComponent.imageTargetDimensions[config.targetIndex];
-          
-          if (targetDimensions) {
-            // Apply scale to container to match target dimensions precisely
-            const targetWidth = targetDimensions.width;
-            const targetHeight = targetDimensions.height;
-            const scale = targetWidth / targetHeight > 1 ? 1 : targetWidth / targetHeight;
-            
-            container.setAttribute("scale", `${scale} ${scale} 1`);
-            console.log(`Target dimensions: ${targetWidth}x${targetHeight}, applied scale: ${scale}`);
-          }
-        }
-        
-        // Try to play with audio enabled
+        // Try to play video
         const playPromise = video.play();
         if (playPromise !== undefined) {
-          playPromise.catch(error => {
-            console.log("Autoplay with audio prevented:", error);
-            // If autoplay with audio fails, try muted first then unmute
-            video.muted = true;
-            video.play().then(() => {
-              // Try to unmute after user interaction
-              const unmute = () => {
-                video.muted = false;
-                document.removeEventListener('touchstart', unmute);
-                document.removeEventListener('click', unmute);
-              };
-              document.addEventListener('touchstart', unmute, { once: true });
-              document.addEventListener('click', unmute, { once: true });
-            }).catch(err => console.log("Even muted autoplay failed:", err));
+          playPromise.then(() => {
+            console.log("Video started playing");
+            
+            // Try to unmute after successful play
+            const unmute = () => {
+              video.muted = false;
+              console.log("Video unmuted");
+              document.removeEventListener('touchstart', unmute);
+              document.removeEventListener('click', unmute);
+            };
+            
+            document.addEventListener('touchstart', unmute, { once: true });
+            document.addEventListener('click', unmute, { once: true });
+            
+          }).catch(error => {
+            console.log("Autoplay prevented:", error);
           });
         }
       });
