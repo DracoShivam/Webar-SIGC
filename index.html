@@ -79,14 +79,50 @@
     }
     
     .hidden {
-      display: none;
+      display: none !important;
+    }
+    
+    #tap-to-start {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      font-family: Arial, sans-serif;
+    }
+    
+    #tap-to-start button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 15px 32px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 20px 2px;
+      cursor: pointer;
+      border-radius: 4px;
     }
   </style>
 </head>
 
 <body>
+  <!-- Initial tap to start screen -->
+  <div id="tap-to-start">
+    <h2>AR Image Tracker</h2>
+    <button id="start-ar-button">Tap to Start</button>
+  </div>
+
   <!-- Overlay that shows before target recognition -->
-  <div id="tracking-overlay" class="overlay-container">
+  <div id="tracking-overlay" class="overlay-container hidden">
     <div class="overlay-icon">
       <div class="scan-animation">
         <div class="scan-line"></div>
@@ -97,9 +133,9 @@
 
   <!-- A-Frame Scene -->
   <a-scene
-    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: #tracking-overlay; uiScanning: #tracking-overlay; uiError: #tracking-overlay;"
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiScanning: none;"
     color-space="sRGB"
-    renderer="colorManagement: true; physicallyCorrectLights: true;"
+    renderer="colorManagement: true; physicallyCorrectLights: true; precision: high;"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
 
@@ -115,7 +151,7 @@
         class="clickable"
         position="0 0 0"
         rotation="0 0 0"
-        material="shader: flat; side: double; transparent: true; opacity: 1">
+        material="shader: flat; side: double; transparent: true; opacity: 0">
       </a-plane>
     </a-entity>
 
@@ -126,7 +162,7 @@
         class="clickable"
         position="0 0 0"
         rotation="0 0 0"
-        material="shader: flat; side: double; transparent: true; opacity: 1">
+        material="shader: flat; side: double; transparent: true; opacity: 0">
       </a-plane>
     </a-entity>
   </a-scene>
@@ -148,77 +184,61 @@
     document.addEventListener('DOMContentLoaded', function () {
       const sceneEl = document.querySelector('a-scene');
       const trackingOverlay = document.getElementById('tracking-overlay');
+      const tapToStart = document.getElementById('tap-to-start');
+      const startARButton = document.getElementById('start-ar-button');
       
-      // Explicitly try to start AR on page load (after a small delay to ensure DOM is ready)
-      setTimeout(() => {
-        // First user interaction with the page
-        document.body.addEventListener('click', function bodyClick() {
-          const mindARComponent = sceneEl.components['mindar-image'];
-          if (mindARComponent && typeof mindARComponent.start === 'function') {
-            mindARComponent.start();
-            console.log("MindAR scanner started after user interaction");
-          }
-          document.body.removeEventListener('click', bodyClick);
-        }, { once: true });
+      // Set up the start button functionality
+      startARButton.addEventListener('click', function() {
+        // Hide the tap to start overlay
+        tapToStart.classList.add('hidden');
         
-        // Also try to start on touchstart for mobile
-        document.body.addEventListener('touchstart', function bodyTouch() {
-          const mindARComponent = sceneEl.components['mindar-image'];
-          if (mindARComponent && typeof mindARComponent.start === 'function') {
+        // Show the tracking overlay
+        trackingOverlay.classList.remove('hidden');
+        
+        // Start the MindAR experience
+        const mindARComponent = sceneEl.components['mindar-image'];
+        if (mindARComponent) {
+          try {
             mindARComponent.start();
-            console.log("MindAR scanner started after user touch");
+            console.log("MindAR scanner started");
+          } catch (err) {
+            console.error("Error starting MindAR:", err);
           }
-          document.body.removeEventListener('touchstart', bodyTouch);
-        }, { once: true });
-      }, 1000);
-      
+        }
+      });
+
       sceneEl.addEventListener('loaded', function () {
         console.log("A-Frame scene loaded");
         
         videoConfig.forEach(config => {
           setupVideoTarget(config);
         });
-        
-        // Try to start MindAR after scene is loaded
-        const mindARComponent = sceneEl.components['mindar-image'];
-        if (mindARComponent && typeof mindARComponent.start === 'function') {
-          try {
-            mindARComponent.start();
-            console.log("MindAR scanner autostarted");
-          } catch (err) {
-            console.error("Error starting MindAR:", err);
-          }
-        } else {
-          console.warn("MindAR component not found or start method not available");
-        }
       });
       
-      // Listen for camera permission request
-      sceneEl.addEventListener('camera-permission-requested', function() {
-        console.log("Camera permission requested");
-      });
-      
-      // Listen for camera setup complete
+      // Listen for camera permission granted
       sceneEl.addEventListener('camera-init', function() {
         console.log("Camera initialized");
+      });
+      
+      // Listen for tracking started
+      sceneEl.addEventListener('arReady', function() {
+        console.log("AR system ready");
       });
       
       // Listen for AR system errors
       sceneEl.addEventListener('arError', function(event) {
         console.error("AR error:", event.detail);
-        // Update overlay with error message
-        const qrHint = document.querySelector('.qr-hint');
-        if (qrHint) {
-          qrHint.textContent = "Camera error. Please refresh and allow camera access.";
-        }
+        alert("Camera error: " + event.detail);
       });
 
       document.addEventListener('visibilitychange', function () {
         videoConfig.forEach(config => {
           const plane = document.querySelector(`#${config.planeId}`);
-          const videoElement = plane.getObject3D('mesh')?.material?.map?.image;
-          if (videoElement && document.hidden) {
-            if (!videoElement.paused) videoElement.pause();
+          const material = plane.getObject3D('mesh')?.material;
+          const videoElement = material?.map?.image;
+          
+          if (videoElement && document.hidden && !videoElement.paused) {
+            videoElement.pause();
           }
         });
       });
@@ -233,71 +253,58 @@
       video.src = config.videoUrl;
       video.playsInline = true;
       video.loop = true;
-      video.muted = true; // Start muted to help with autoplay
+      video.muted = true; // Start muted to allow autoplay
       video.setAttribute("preload", "auto");
+      video.crossOrigin = "anonymous";
       
-      // Wait for video metadata to load
-      video.addEventListener('loadedmetadata', function() {
-        // Calculate aspect ratio from the actual video
-        const aspectRatio = video.videoHeight / video.videoWidth;
-        
-        // Set the plane's dimensions according to the video's aspect ratio
-        plane.setAttribute("width", 1); // Base width
-        plane.setAttribute("height", aspectRatio);
-        
-        console.log(`Video dimensions set: ${video.videoWidth}x${video.videoHeight}, aspect ratio: ${aspectRatio}`);
-      });
-
       // Create video texture
       const texture = new THREE.VideoTexture(video);
       texture.minFilter = THREE.LinearFilter;
       texture.magFilter = THREE.LinearFilter;
       texture.format = THREE.RGBFormat;
 
-      // Apply video texture to plane
-      plane.getObject3D('mesh').material.map = texture;
-      plane.getObject3D('mesh').material.needsUpdate = true;
+      // Apply video texture to plane once metadata is loaded
+      video.addEventListener('loadedmetadata', function() {
+        const aspectRatio = video.videoHeight / video.videoWidth;
+        
+        // Set plane dimensions according to video aspect ratio
+        plane.setAttribute("width", 1);
+        plane.setAttribute("height", aspectRatio);
+        console.log(`Video dimensions: ${video.videoWidth}x${video.videoHeight}, aspect ratio: ${aspectRatio}`);
+        
+        // Apply texture
+        plane.getObject3D('mesh').material.map = texture;
+        plane.getObject3D('mesh').material.needsUpdate = true;
+        plane.getObject3D('mesh').material.opacity = 1;
+      });
 
-      // Try to preload the video
+      // Preload the video
       video.load();
-      
-      // Attempt to start video playback (likely will fail but will be ready)
-      try {
-        video.play().catch(e => {
-          console.log("Initial video play prevented, will retry on target found");
-        });
-      } catch (e) {
-        console.log("Initial video play error:", e);
-      }
 
       // Handle target found event
       targetEntity.addEventListener("targetFound", function () {
         console.log(`Target ${config.targetIndex} found`);
         
-        // Hide scanning overlay when target is found
+        // Hide the scanning overlay
         trackingOverlay.classList.add('hidden');
         
-        // Try to play video
-        const playPromise = video.play();
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            console.log("Video started playing");
-            
-            // Try to unmute after successful play
-            const unmute = () => {
-              video.muted = false;
-              console.log("Video unmuted");
-              document.removeEventListener('touchstart', unmute);
-              document.removeEventListener('click', unmute);
-            };
-            
-            document.addEventListener('touchstart', unmute, { once: true });
-            document.addEventListener('click', unmute, { once: true });
-            
-          }).catch(error => {
-            console.log("Autoplay prevented:", error);
-          });
-        }
+        // Try to play the video
+        video.play().then(() => {
+          console.log("Video playing");
+          
+          // Try to unmute after first user interaction
+          const unmute = () => {
+            video.muted = false;
+            document.removeEventListener('click', unmute);
+            document.removeEventListener('touchstart', unmute);
+          };
+          
+          document.addEventListener('click', unmute, { once: true });
+          document.addEventListener('touchstart', unmute, { once: true });
+          
+        }).catch(error => {
+          console.error("Video play error:", error);
+        });
       });
 
       targetEntity.addEventListener("targetLost", function () {
@@ -305,10 +312,17 @@
         video.pause();
         
         // Check if all targets are lost to show overlay again
-        const allTargetsLost = document.querySelectorAll('a-entity[mindar-image-target]').length === 
-                              document.querySelectorAll('a-entity[mindar-image-target][visible="false"]').length;
+        const targets = document.querySelectorAll('a-entity[mindar-image-target]');
+        let allLost = true;
         
-        if (allTargetsLost) {
+        for (let i = 0; i < targets.length; i++) {
+          if (targets[i].object3D.visible) {
+            allLost = false;
+            break;
+          }
+        }
+        
+        if (allLost) {
           trackingOverlay.classList.remove('hidden');
         }
       });
