@@ -115,6 +115,8 @@
         class="clickable"
         position="0 0 0"
         rotation="0 0 0"
+        width="1"
+        height="1"
         material="shader: flat; side: double; transparent: true; opacity: 0">
       </a-plane>
     </a-entity>
@@ -126,6 +128,8 @@
         class="clickable"
         position="0 0 0"
         rotation="0 0 0"
+        width="1"
+        height="1"
         material="shader: flat; side: double; transparent: true; opacity: 0">
       </a-plane>
     </a-entity>
@@ -217,14 +221,42 @@
         console.log(`Target ${config.targetIndex} found`);
         trackingOverlay.classList.add('hidden');
         
-        // Get target dimensions from the image-target system
-        const imageRatio = video.videoHeight / video.videoWidth || 16/9; // Default ratio if video metadata not loaded
-        const targetWidth = 1;
-        const targetHeight = targetWidth * imageRatio;
+        // Access the actual target dimensions from MindAR
+        const mindARComponent = document.querySelector('a-scene').systems['mindar-image-system'];
+        const imageTargets = mindARComponent.imageTargetDimensions;
         
-        // Set video plane dimensions to match target exactly
-        plane.setAttribute("width", targetWidth);
-        plane.setAttribute("height", targetHeight);
+        if (imageTargets && imageTargets[config.targetIndex]) {
+          // Get the actual target dimensions from MindAR
+          const targetWidth = 1; // We keep this as a reference scale
+          const targetHeight = imageTargets[config.targetIndex].height / imageTargets[config.targetIndex].width;
+          
+          // Set the plane dimensions to match the target exactly
+          plane.setAttribute("width", targetWidth);
+          plane.setAttribute("height", targetHeight);
+          
+          // Additional fix: ensure video aspect ratio matches the target
+          // This ensures the video fits precisely over the target
+          video.addEventListener('loadedmetadata', function() {
+            const videoRatio = video.videoHeight / video.videoWidth;
+            const targetRatio = targetHeight / targetWidth;
+            
+            // If video ratio doesn't match target ratio, adjust plane to preserve target dimensions
+            // while ensuring video covers the entire target without stretching
+            if (Math.abs(videoRatio - targetRatio) > 0.01) {
+              if (videoRatio > targetRatio) {
+                // Video is taller than target - expand width to maintain video ratio
+                const adjustedWidth = targetHeight / videoRatio;
+                plane.setAttribute("width", adjustedWidth);
+                plane.setAttribute("height", targetHeight);
+              } else {
+                // Video is wider than target - expand height to maintain video ratio
+                const adjustedHeight = targetWidth * videoRatio;
+                plane.setAttribute("width", targetWidth);
+                plane.setAttribute("height", adjustedHeight);
+              }
+            }
+          });
+        }
         
         // Try to play with audio enabled
         const playPromise = video.play();
