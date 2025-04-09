@@ -1,4 +1,5 @@
-![image](https://github.com/user-attachments/assets/c5ad3ebc-68c4-424b-9fb3-c0be7e4f281a)![Scan here for something cool](https://github.com/user-attachments/assets/fa28b00f-087a-416a-8670-dd6fa996ef09)
+![image](https://github.com/user-attachments/assets/e40c9187-8165-46ad-a1af-64d660fd3314)
+
 Scan this image to get to the website and play the video
 Overview of the code:
 We have used A-frame for the image tracking and three.js to overlay the video onto the tracked image. The image to be tracked is converted into a targets.mind file using the below link:
