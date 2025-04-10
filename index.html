@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WebAR Image Tracking Video Player with Masking</title>
+  <title>WebAR Image Tracking Video Player with Overlay</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
   <style>
@@ -79,88 +79,50 @@
     </div>
     <div class="qr-hint">Point your camera at the target image</div>
   </div>
+
   <a-scene
     mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001; missTolerance: 5;"
     color-space="sRGB"
     renderer="colorManagement: true, physicallyCorrectLights: true"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
+
     <a-camera position="0 0 0" look-controls="enabled: false"
               cursor="fuse: false; rayOrigin: mouse;"
               raycaster="far: 10000; objects: .clickable"></a-camera>
+
     <a-entity mindar-image-target="targetIndex: 0">
       <a-plane
         id="video-plane-0"
         class="clickable"
         position="0 0 0"
         rotation="0 0 0"
-        material="shader: customVideoMaskShader; // Use our custom shader
-                  side: double;
-                  transparent: true;
-                  map: #video0;       // The video texture
-                  mask: #mask0;      // The mask texture
-                  opacity: 0">
+        material="shader: flat; side: double; transparent: true; opacity: 0">
       </a-plane>
-      <video id="video0" src="./videos/video1.mp4" playsinline loop preload="auto" muted></video>
-      <img id="mask0" src="./masks/mask0.png" crossorigin="anonymous" style="display:none"> </a-entity>
+    </a-entity>
+
     <a-entity mindar-image-target="targetIndex: 1">
       <a-plane
         id="video-plane-1"
         class="clickable"
         position="0 0 0"
         rotation="0 0 0"
-        material="shader: customVideoMaskShader; // Use our custom shader
-                  side: double;
-                  transparent: true;
-                  map: #video1;       // The video texture
-                  mask: #mask1;      // The mask texture
-                  opacity: 0">
+        material="shader: flat; side: double; transparent: true; opacity: 0">
       </a-plane>
-      <video id="video1" src="./videos/video2.mp4" playsinline loop preload="auto" muted></video>
-       <img id="mask1" src="./masks/mask1.png" crossorigin="anonymous" style="display:none">  </a-entity>
+    </a-entity>
   </a-scene>
 
   <script>
-    // 1. Register a Custom Shader in A-Frame
-    AFRAME.registerShader('customVideoMaskShader', {
-      schema: {
-        map: { type: 'map', default: null },       // The video texture
-        mask: { type: 'map', default: null },      // The mask texture
-        opacity: { type: 'float', default: 1.0 },
-      },
-      vertexShader: `
-        varying vec2 vUv;
-        void main() {
-          vUv = uv;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        varying vec2 vUv;
-        uniform sampler2D map;    // The video texture
-        uniform sampler2D mask;   // The mask texture
-        uniform float opacity;
-        void main() {
-          vec4 videoColor = texture2D(map, vUv);
-          vec4 maskColor = texture2D(mask, vUv);
-          float alpha = maskColor.r * opacity; // Use red channel as alpha
-          gl_FragColor = vec4(videoColor.rgb, alpha);
-        }
-      `
-    });
-
     const videoConfig = [
       {
         targetIndex: 0,
         videoUrl: "./videos/video1.mp4",
-        planeId: "video-plane-0",
-        maskId:  "mask0"
+        planeId: "video-plane-0"
       },
       {
         targetIndex: 1,
         videoUrl: "./videos/video2.mp4",
-        planeId: "video-plane-1",
-        maskId:  "mask1"
+        planeId: "video-plane-1"
       }
     ];
 
@@ -168,9 +130,12 @@
       const sceneEl = document.querySelector('a-scene');
       const trackingOverlay = document.getElementById('tracking-overlay');
 
-
+      // Initialize tracking state
+      let targetsFound = videoConfig.map(() => false);
+      
       sceneEl.addEventListener('loaded', function () {
         console.log("A-Frame scene loaded");
+
         videoConfig.forEach(config => {
           setupVideoTarget(config);
         });
@@ -190,69 +155,71 @@
       const plane = document.querySelector(`#${config.planeId}`);
       const targetEntity = document.querySelector(`a-entity[mindar-image-target="targetIndex: ${config.targetIndex}"]`);
       const trackingOverlay = document.getElementById('tracking-overlay');
-      let videoPlaying = false;
 
-      const video = document.getElementById(config.videoUrl.substring(config.videoUrl.lastIndexOf('/') + 1)); // Get video element
-      const maskImage = document.getElementById(config.maskId);  // Get mask image
+      const video = document.createElement("video");
+      video.src = config.videoUrl;
+      video.playsInline = true;
+      video.loop = true;
+      video.setAttribute("preload", "auto");
+      video.muted = false; // Ensure audio is not muted
 
-      // Ensure the mask image is loaded before applying the texture
-      if (!maskImage.complete) {
-        maskImage.onload = () => {
-          applyVideoAndMask(plane, video, maskImage, targetEntity, trackingOverlay, videoPlaying, config);
-        };
-      } else {
-        applyVideoAndMask(plane, video, maskImage, targetEntity, trackingOverlay, videoPlaying, config);
-      }
-    }
-
-    function applyVideoAndMask(plane, video, maskImage, targetEntity, trackingOverlay, videoPlaying, config) {
-
-
+      // Create video texture
       const texture = new THREE.VideoTexture(video);
       texture.minFilter = THREE.LinearFilter;
       texture.magFilter = THREE.LinearFilter;
       texture.format = THREE.RGBFormat;
 
-
+      // Apply video texture to plane
       plane.getObject3D('mesh').material.map = texture;
-      plane.getObject3D('mesh').material.uniforms.mask.value = new THREE.Texture(maskImage); // Apply mask
-      plane.getObject3D('mesh').material.transparent = true;
-      plane.getObject3D('mesh').material.opacity = 0;
+      plane.getObject3D('mesh').material.opacity = 1;
 
+      // Handle audio context activation
       const enableAudio = () => {
+        // Create a temporary audio context to unlock audio on iOS
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // Create and immediately play a short silent buffer
         const buffer = audioContext.createBuffer(1, 1, 22050);
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
         source.connect(audioContext.destination);
         source.start(0);
+        
+        // Remove the audio activation event listeners
         document.removeEventListener('touchstart', enableAudio);
         document.removeEventListener('click', enableAudio);
       };
-
+      
+      // Add event listeners for user interaction to enable audio
       document.addEventListener('touchstart', enableAudio, { once: true });
       document.addEventListener('click', enableAudio, { once: true });
 
+      // Handle target found event
       targetEntity.addEventListener("targetFound", function () {
         console.log(`Target ${config.targetIndex} found`);
         trackingOverlay.classList.add('hidden');
-        videoPlaying = true;
-
+        
+        // Get target dimensions from the image-target system
+        const imageRatio = video.videoHeight / video.videoWidth || 16/9; // Default ratio if video metadata not loaded
         const targetWidth = targetEntity.getAttribute('mindar-image-target').targetWidth;
-        const targetHeight = targetEntity.getAttribute('mindar-image-target').targetHeight;
-
+        const targetHeight = targetWidth * imageRatio;
+        
+        // Set video plane dimensions to match target exactly
         plane.setAttribute("width", targetWidth);
         plane.setAttribute("height", targetHeight);
 
-        plane.getObject3D('mesh').material.opacity = 1; // Make the plane visible
-
-
+        // **Get target rotation**
+        const targetRotation = targetEntity.getAttribute('rotation');
+        plane.setAttribute('rotation', `${targetRotation.x} ${targetRotation.y} ${targetRotation.z}`);
+        
+        // Try to play with audio enabled
         const playPromise = video.play();
         if (playPromise !== undefined) {
           playPromise.catch(error => {
             console.log("Autoplay with audio prevented:", error);
+            // If autoplay with audio fails, try muted first then unmute
             video.muted = true;
             video.play().then(() => {
+              // Try to unmute after user interaction
               const unmute = () => {
                 video.muted = false;
                 document.removeEventListener('touchstart', unmute);
@@ -267,14 +234,12 @@
 
       targetEntity.addEventListener("targetLost", function () {
         console.log(`Target ${config.targetIndex} lost`);
-        if (videoPlaying) {
-          video.pause();
-          videoPlaying = false;
-        }
-
-        const allTargetsLost = document.querySelectorAll('a-entity[mindar-image-target]').length ===
+        video.pause();
+        
+        // Check if all targets are lost to show overlay again
+        const allTargetsLost = document.querySelectorAll('a-entity[mindar-image-target]').length === 
                               document.querySelectorAll('a-entity[mindar-image-target][visible="false"]').length;
-
+        
         if (allTargetsLost) {
           trackingOverlay.classList.remove('hidden');
         }
