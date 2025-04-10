@@ -4,8 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WebAR Image Tracking Video Player with Overlay</title>
+
+  <!-- Import A-Frame -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+
+  <!-- Import MindAR Image Tracking -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+
   <style>
     body {
       margin: 0;
@@ -15,6 +20,8 @@
       width: 100%;
       height: 100%;
     }
+    
+    /* Overlay styles */
     .overlay-container {
       position: fixed;
       top: 0;
@@ -30,6 +37,7 @@
       color: white;
       font-family: Arial, sans-serif;
     }
+    
     .overlay-icon {
       width: 120px;
       height: 120px;
@@ -40,6 +48,7 @@
       align-items: center;
       margin-bottom: 20px;
     }
+    
     .scan-animation {
       border: 4px solid white;
       width: 80%;
@@ -47,6 +56,7 @@
       position: relative;
       border-radius: 10px;
     }
+    
     .scan-line {
       position: absolute;
       height: 2px;
@@ -55,22 +65,27 @@
       top: 0;
       animation: scan 2s infinite ease-in-out;
     }
+    
     @keyframes scan {
       0% { top: 0; }
       50% { top: 100%; }
       100% { top: 0; }
     }
+    
     .qr-hint {
       margin-top: 20px;
       font-size: 18px;
       opacity: 0.9;
     }
+    
     .hidden {
       display: none;
     }
   </style>
 </head>
+
 <body>
+  <!-- Overlay that shows before target recognition -->
   <div id="tracking-overlay" class="overlay-container">
     <div class="overlay-icon">
       <div class="scan-animation">
@@ -80,17 +95,20 @@
     <div class="qr-hint">Point your camera at the target image</div>
   </div>
 
+  <!-- A-Frame Scene -->
   <a-scene
     mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001; missTolerance: 5;"
     color-space="sRGB"
-    renderer="colorManagement: true, physicallyCorrectLights: true"
+    renderer="colorManagement: true; physicallyCorrectLights: true"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
 
+    <!-- Camera -->
     <a-camera position="0 0 0" look-controls="enabled: false"
               cursor="fuse: false; rayOrigin: mouse;"
               raycaster="far: 10000; objects: .clickable"></a-camera>
 
+    <!-- Target #0 -->
     <a-entity mindar-image-target="targetIndex: 0">
       <a-plane
         id="video-plane-0"
@@ -101,6 +119,7 @@
       </a-plane>
     </a-entity>
 
+    <!-- Target #1 -->
     <a-entity mindar-image-target="targetIndex: 1">
       <a-plane
         id="video-plane-1"
@@ -153,7 +172,7 @@
 
     function setupVideoTarget(config) {
       const plane = document.querySelector(`#${config.planeId}`);
-      const targetEntity = document.querySelector(`a-entity[mindar-image-target="targetIndex: ${config.targetIndex}"]`);
+      const targetEntity = plane.parentNode;
       const trackingOverlay = document.getElementById('tracking-overlay');
 
       const video = document.createElement("video");
@@ -198,18 +217,31 @@
         console.log(`Target ${config.targetIndex} found`);
         trackingOverlay.classList.add('hidden');
         
-        // Get target dimensions from the image-target system
-        const imageRatio = video.videoHeight / video.videoWidth || 16/9; // Default ratio if video metadata not loaded
-        const targetWidth = targetEntity.getAttribute('mindar-image-target').targetWidth;
-        const targetHeight = targetWidth * imageRatio;
+        // Wait for video metadata to properly set aspect ratio
+        video.addEventListener('loadedmetadata', function onMetadataLoaded() {
+          // Get video's aspect ratio
+          const videoRatio = video.videoHeight / video.videoWidth;
+          
+          // Use the target's width as reference and adjust height by aspect ratio
+          const width = 1.0; // Default width in AR space
+          const height = width * videoRatio;
+          
+          // Update plane dimensions
+          plane.setAttribute('width', width);
+          plane.setAttribute('height', height);
+          
+          // Remove the listener to avoid duplicate calls
+          video.removeEventListener('loadedmetadata', onMetadataLoaded);
+        });
         
-        // Set video plane dimensions to match target exactly
-        plane.setAttribute("width", targetWidth);
-        plane.setAttribute("height", targetHeight);
-
-        // **Get target rotation**
-        const targetRotation = targetEntity.getAttribute('rotation');
-        plane.setAttribute('rotation', `${targetRotation.x} ${targetRotation.y} ${targetRotation.z}`);
+        // If video metadata is already loaded
+        if (video.readyState >= 2) {
+          const videoRatio = video.videoHeight / video.videoWidth;
+          const width = 1.0;
+          const height = width * videoRatio;
+          plane.setAttribute('width', width);
+          plane.setAttribute('height', height);
+        }
         
         // Try to play with audio enabled
         const playPromise = video.play();
@@ -242,6 +274,15 @@
         
         if (allTargetsLost) {
           trackingOverlay.classList.remove('hidden');
+        }
+      });
+      
+      // Add click event to toggle play/pause
+      plane.addEventListener('click', function() {
+        if (video.paused) {
+          video.play();
+        } else {
+          video.pause();
         }
       });
     }
