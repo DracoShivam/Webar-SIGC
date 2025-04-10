@@ -1,229 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WebAR Image Tracking Video Player with Overlay</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+  <meta charset="UTF-8">
+  <title>AR Video Overlay - Image 2</title>
   <style>
     body {
       margin: 0;
       padding: 0;
-      overflow: hidden;
-      position: fixed;
-      width: 100%;
-      height: 100%;
-    }
-    .overlay-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      background-color: rgba(0, 0, 0, 0.7);
-      z-index: 10;
-      color: white;
-      font-family: Arial, sans-serif;
-    }
-    .overlay-icon {
-      width: 120px;
-      height: 120px;
-      background-color: rgba(0, 150, 0, 0.8);
-      border-radius: 50%;
+      background: #000;
       display: flex;
       justify-content: center;
       align-items: center;
-      margin-bottom: 20px;
+      height: 100vh;
     }
-    .scan-animation {
-      border: 4px solid white;
-      width: 80%;
-      height: 140%;
+
+    .video-container {
       position: relative;
-      border-radius: 10px;
+      width: 1437px; /* Match the image width */
+      height: auto;
     }
-    .scan-line {
-      position: absolute;
-      height: 2px;
+
+    .background-img {
       width: 100%;
-      background-color: #00ff00;
-      top: 0;
-      animation: scan 2s infinite ease-in-out;
+      display: block;
     }
-    @keyframes scan {
-      0% { top: 0; }
-      50% { top: 100%; }
-      100% { top: 0; }
+
+    .video-overlay {
+      position: absolute;
+      top: 162px;     /* Adjust this value to match the screen area */
+      left: 149px;    /* Adjust this value to align horizontally */
+      width: 1138px;  /* Width of the screen area in the image */
+      height: 641px;  /* Height of the screen area */
+      overflow: hidden;
+      pointer-events: none;
     }
-    .qr-hint {
-      margin-top: 20px;
-      font-size: 18px;
-      opacity: 0.9;
-    }
-    .hidden {
-      display: none;
+
+    .video-overlay video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
   </style>
 </head>
 <body>
-  <div id="tracking-overlay" class="overlay-container">
-    <div class="overlay-icon">
-      <div class="scan-animation">
-        <div class="scan-line"></div>
-      </div>
+
+  <div class="video-container">
+    <!-- Newspaper or device Image -->
+    <img src="Screenshot 2025-04-10 195922.png" class="background-img" alt="AR Frame">
+
+    <!-- Video positioned exactly within the screen space -->
+    <div class="video-overlay">
+      <video src="video1.mp4" autoplay muted loop playsinline></video>
     </div>
-    <div class="qr-hint">Point your camera at the target image</div>
   </div>
 
-  <a-scene
-    mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001; missTolerance: 5;"
-    color-space="sRGB"
-    renderer="colorManagement: true, physicallyCorrectLights: true"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false">
-
-    <a-camera position="0 0 0" look-controls="enabled: false"
-              cursor="fuse: false; rayOrigin: mouse;"
-              raycaster="far: 10000; objects: .clickable"></a-camera>
-
-    <a-entity id="target-0" mindar-image-target="targetIndex: 0">
-      <a-entity id="video-container-0" position="0 0 0" rotation="0 0 0">
-        <a-plane
-          id="video-plane-0"
-          class="clickable"
-          position="0 0 0"
-          rotation="0 0 0"
-          width="1"
-          height="0.5625"
-          material="shader: flat; side: double; transparent: false; opacity: 1">
-        </a-plane>
-      </a-entity>
-    </a-entity>
-
-    <a-entity id="target-1" mindar-image-target="targetIndex: 1">
-      <a-entity id="video-container-1" position="0 0 0" rotation="0 0 0">
-        <a-plane
-          id="video-plane-1"
-          class="clickable"
-          position="0 0 0"
-          rotation="0 0 0"
-          width="1"
-          height="0.5625"
-          material="shader: flat; side: double; transparent: false; opacity: 1">
-        </a-plane>
-      </a-entity>
-    </a-entity>
-  </a-scene>
-
-  <script>
-    const videoConfig = [
-      {
-        targetIndex: 0,
-        videoUrl: "./videos/video1.mp4",
-        planeId: "video-plane-0"
-      },
-      {
-        targetIndex: 1,
-        videoUrl: "./videos/video2.mp4",
-        planeId: "video-plane-1"
-      }
-    ];
-
-    window.addEventListener('DOMContentLoaded', function () {
-      const sceneEl = document.querySelector('a-scene');
-      const trackingOverlay = document.getElementById('tracking-overlay');
-      let targetsFound = videoConfig.map(() => false);
-      
-      sceneEl.addEventListener('loaded', function () {
-        console.log("A-Frame scene loaded");
-        videoConfig.forEach(config => {
-          setupVideoTarget(config);
-        });
-      });
-
-      document.addEventListener('visibilitychange', function () {
-        videoConfig.forEach(config => {
-          const videoElement = document.querySelector(`#${config.planeId}`).getObject3D('mesh').material.map?.image;
-          if (videoElement && document.hidden) {
-            if (!videoElement.paused) videoElement.pause();
-          }
-        });
-      });
-    });
-
-    function setupVideoTarget(config) {
-      const plane = document.querySelector(`#${config.planeId}`);
-      const targetEntity = document.querySelector(`#target-${config.targetIndex}`);
-      const trackingOverlay = document.getElementById('tracking-overlay');
-
-      const video = document.createElement("video");
-      video.src = config.videoUrl;
-      video.playsInline = true;
-      video.loop = true;
-      video.setAttribute("preload", "auto");
-      video.muted = false;
-
-      const texture = new THREE.VideoTexture(video);
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-      texture.format = THREE.RGBFormat;
-
-      plane.getObject3D('mesh').material.map = texture;
-      plane.getObject3D('mesh').material.opacity = 1;
-
-      const enableAudio = () => {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const buffer = audioContext.createBuffer(1, 1, 22050);
-        const source = audioContext.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContext.destination);
-        source.start(0);
-        document.removeEventListener('touchstart', enableAudio);
-        document.removeEventListener('click', enableAudio);
-      };
-
-      document.addEventListener('touchstart', enableAudio, { once: true });
-      document.addEventListener('click', enableAudio, { once: true });
-
-      targetEntity.addEventListener("targetFound", function () {
-        console.log(`Target ${config.targetIndex} found`);
-        trackingOverlay.classList.add('hidden');
-
-        const playPromise = video.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(error => {
-            console.log("Autoplay with audio prevented:", error);
-            video.muted = true;
-            video.play().then(() => {
-              const unmute = () => {
-                video.muted = false;
-                document.removeEventListener('touchstart', unmute);
-                document.removeEventListener('click', unmute);
-              };
-              document.addEventListener('touchstart', unmute, { once: true });
-              document.addEventListener('click', unmute, { once: true });
-            }).catch(err => console.log("Even muted autoplay failed:", err));
-          });
-        }
-      });
-
-      targetEntity.addEventListener("targetLost", function () {
-        console.log(`Target ${config.targetIndex} lost`);
-        video.pause();
-
-        const allTargetsLost = document.querySelectorAll('a-entity[mindar-image-target]').length === 
-                              document.querySelectorAll('a-entity[mindar-image-target][visible="false"]').length;
-        
-        if (allTargetsLost) {
-          trackingOverlay.classList.remove('hidden');
-        }
-      });
-    }
-  </script>
 </body>
 </html>
