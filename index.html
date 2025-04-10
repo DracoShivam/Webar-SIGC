@@ -157,73 +157,76 @@
     });
 
     function setupVideoTarget(config) {
-      const plane = document.querySelector(`#${config.planeId}`);
-      const targetEntity = document.querySelector(`#target-${config.targetIndex}`);
-      const trackingOverlay = document.getElementById('tracking-overlay');
+  const plane = document.querySelector(`#${config.planeId}`);
+  const targetEntity = document.querySelector(`#target-${config.targetIndex}`);
+  const trackingOverlay = document.getElementById('tracking-overlay');
 
-      const video = document.createElement("video");
-      video.src = config.videoUrl;
-      video.playsInline = true;
-      video.loop = true;
-      video.setAttribute("preload", "auto");
-      video.muted = false;
+  const video = document.createElement("video");
+  video.src = config.videoUrl;
+  video.playsInline = true;
+  video.loop = true;
+  video.setAttribute("preload", "auto");
+  video.muted = false;
 
-      const texture = new THREE.VideoTexture(video);
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-      texture.format = THREE.RGBFormat;
+  const texture = new THREE.VideoTexture(video);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.format = THREE.RGBFormat;
 
-      plane.getObject3D('mesh').material.map = texture;
-      plane.getObject3D('mesh').material.opacity = 1;
+  // Load the rounded corner alpha mask
+  const loader = new THREE.TextureLoader();
+  const maskTexture = loader.load('./videos/rounded-mask.png', () => {
+    plane.getObject3D('mesh').material = new THREE.MeshBasicMaterial({
+      map: texture,
+      alphaMap: maskTexture,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+  });
 
-      const enableAudio = () => {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const buffer = audioContext.createBuffer(1, 1, 22050);
-        const source = audioContext.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContext.destination);
-        source.start(0);
-        document.removeEventListener('touchstart', enableAudio);
-        document.removeEventListener('click', enableAudio);
-      };
+  const enableAudio = () => {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const buffer = audioContext.createBuffer(1, 1, 22050);
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioContext.destination);
+    source.start(0);
+    document.removeEventListener('touchstart', enableAudio);
+    document.removeEventListener('click', enableAudio);
+  };
 
-      document.addEventListener('touchstart', enableAudio, { once: true });
-      document.addEventListener('click', enableAudio, { once: true });
+  document.addEventListener('touchstart', enableAudio, { once: true });
+  document.addEventListener('click', enableAudio, { once: true });
 
-      targetEntity.addEventListener("targetFound", function () {
-        console.log(`Target ${config.targetIndex} found`);
-        trackingOverlay.classList.add('hidden');
-
-        const playPromise = video.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(error => {
-            console.log("Autoplay with audio prevented:", error);
-            video.muted = true;
-            video.play().then(() => {
-              const unmute = () => {
-                video.muted = false;
-                document.removeEventListener('touchstart', unmute);
-                document.removeEventListener('click', unmute);
-              };
-              document.addEventListener('touchstart', unmute, { once: true });
-              document.addEventListener('click', unmute, { once: true });
-            }).catch(err => console.log("Even muted autoplay failed:", err));
-          });
-        }
-      });
-
-      targetEntity.addEventListener("targetLost", function () {
-        console.log(`Target ${config.targetIndex} lost`);
-        video.pause();
-
-        const allTargetsLost = document.querySelectorAll('a-entity[mindar-image-target]').length === 
-                              document.querySelectorAll('a-entity[mindar-image-target][visible="false"]').length;
-        
-        if (allTargetsLost) {
-          trackingOverlay.classList.remove('hidden');
-        }
+  targetEntity.addEventListener("targetFound", function () {
+    trackingOverlay.classList.add('hidden');
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(error => {
+        video.muted = true;
+        video.play().then(() => {
+          const unmute = () => {
+            video.muted = false;
+            document.removeEventListener('touchstart', unmute);
+            document.removeEventListener('click', unmute);
+          };
+          document.addEventListener('touchstart', unmute, { once: true });
+          document.addEventListener('click', unmute, { once: true });
+        });
       });
     }
+  });
+
+  targetEntity.addEventListener("targetLost", function () {
+    video.pause();
+    const allTargetsLost = document.querySelectorAll('a-entity[mindar-image-target]').length === 
+                          document.querySelectorAll('a-entity[mindar-image-target][visible="false"]').length;
+    if (allTargetsLost) {
+      trackingOverlay.classList.remove('hidden');
+    }
+  });
+}
+
   </script>
 </body>
 </html>
