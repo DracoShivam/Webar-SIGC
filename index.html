@@ -175,14 +175,19 @@
 
   // Load the rounded corner alpha mask
   const loader = new THREE.TextureLoader();
-  const maskTexture = loader.load('./videos/rounded-mask.png', () => {
-    plane.getObject3D('mesh').material = new THREE.MeshBasicMaterial({
-      map: texture,
-      alphaMap: maskTexture,
-      transparent: true,
-      side: THREE.DoubleSide
-    });
+loader.load('./videos/rounded-mask.png', function(maskTexture) {
+  texture.encoding = THREE.sRGBEncoding;
+  maskTexture.encoding = THREE.sRGBEncoding;
+
+  plane.getObject3D('mesh').material = new THREE.MeshBasicMaterial({
+    map: texture,
+    alphaMap: maskTexture,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide
   });
+});
+
 
   const enableAudio = () => {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
