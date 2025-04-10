@@ -1,58 +1,61 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>AR Video Overlay - Image 2</title>
+  <meta charset="utf-8">
+  <title>WebAR Precise Video Fit</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
   <style>
-    body {
+    body, html {
       margin: 0;
       padding: 0;
-      background: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .video-container {
-      position: relative;
-      width: 1437px; /* Match the image width */
-      height: auto;
-    }
-
-    .background-img {
-      width: 100%;
-      display: block;
-    }
-
-    .video-overlay {
-      position: absolute;
-      top: 162px;     /* Adjust this value to match the screen area */
-      left: 149px;    /* Adjust this value to align horizontally */
-      width: 1138px;  /* Width of the screen area in the image */
-      height: 641px;  /* Height of the screen area */
       overflow: hidden;
-      pointer-events: none;
-    }
-
-    .video-overlay video {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      background: #000;
+    }
+
+    .overlay-hint {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-family: sans-serif;
+      z-index: 10;
+      background: rgba(0,0,0,0.5);
+      padding: 10px 20px;
+      border-radius: 10px;
     }
   </style>
 </head>
 <body>
+  <div class="overlay-hint">📸 Point at the target image</div>
 
-  <div class="video-container">
-    <!-- Newspaper or device Image -->
-    <img src="Screenshot 2025-04-10 195922.png" class="background-img" alt="AR Frame">
+  <a-scene mindar-image="imageTargetSrc: ./targets.mind;" 
+           color-space="sRGB"
+           renderer="colorManagement: true, physicallyCorrectLights: true"
+           vr-mode-ui="enabled: false"
+           device-orientation-permission-ui="enabled: false">
 
-    <!-- Video positioned exactly within the screen space -->
-    <div class="video-overlay">
-      <video src="video1.mp4" autoplay muted loop playsinline></video>
-    </div>
-  </div>
+    <a-assets>
+      <video id="video1" src="./videos/video1.mp4" preload="auto" autoplay loop playsinline muted crossorigin="anonymous"></video>
+    </a-assets>
 
+    <a-camera position="0 0 0" look-controls="enabled: false"
+              cursor="fuse: false; rayOrigin: mouse;"
+              raycaster="far: 10000; objects: .clickable"></a-camera>
+
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-plane 
+        src="#video1"
+        width="1.13" height="0.634"
+        position="0 0 0"
+        rotation="0 0 0"
+        material="shader: flat; transparent: true">
+      </a-plane>
+    </a-entity>
+
+  </a-scene>
 </body>
 </html>
