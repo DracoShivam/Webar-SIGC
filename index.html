@@ -93,21 +93,10 @@
 
     <a-entity id="target-0" mindar-image-target="targetIndex: 0">
       <a-entity id="video-container-0" position="0 0 0" rotation="0 0 0">
-        <!-- White border frame -->
-        <a-plane
-          position="0 0 0.001"
-          rotation="0 0 0"
-          width="1.05"
-          height="0.59"
-          color="white"
-          material="shader: flat; side: double">
-        </a-plane>
-
-        <!-- Actual video plane -->
         <a-plane
           id="video-plane-0"
           class="clickable"
-          position="0 0 0.002"
+          position="0 0 0"
           rotation="0 0 0"
           width="1"
           height="0.5625"
@@ -118,21 +107,10 @@
 
     <a-entity id="target-1" mindar-image-target="targetIndex: 1">
       <a-entity id="video-container-1" position="0 0 0" rotation="0 0 0">
-        <!-- White border frame -->
-        <a-plane
-          position="0 0 0.001"
-          rotation="0 0 0"
-          width="1.05"
-          height="0.59"
-          color="white"
-          material="shader: flat; side: double">
-        </a-plane>
-
-        <!-- Actual video plane -->
         <a-plane
           id="video-plane-1"
           class="clickable"
-          position="0 0 0.002"
+          position="0 0 0"
           rotation="0 0 0"
           width="1"
           height="0.5625"
@@ -159,8 +137,10 @@
     window.addEventListener('DOMContentLoaded', function () {
       const sceneEl = document.querySelector('a-scene');
       const trackingOverlay = document.getElementById('tracking-overlay');
-
+      let targetsFound = videoConfig.map(() => false);
+      
       sceneEl.addEventListener('loaded', function () {
+        console.log("A-Frame scene loaded");
         videoConfig.forEach(config => {
           setupVideoTarget(config);
         });
@@ -211,11 +191,13 @@
       document.addEventListener('click', enableAudio, { once: true });
 
       targetEntity.addEventListener("targetFound", function () {
+        console.log(`Target ${config.targetIndex} found`);
         trackingOverlay.classList.add('hidden');
 
         const playPromise = video.play();
         if (playPromise !== undefined) {
           playPromise.catch(error => {
+            console.log("Autoplay with audio prevented:", error);
             video.muted = true;
             video.play().then(() => {
               const unmute = () => {
@@ -225,17 +207,18 @@
               };
               document.addEventListener('touchstart', unmute, { once: true });
               document.addEventListener('click', unmute, { once: true });
-            });
+            }).catch(err => console.log("Even muted autoplay failed:", err));
           });
         }
       });
 
       targetEntity.addEventListener("targetLost", function () {
+        console.log(`Target ${config.targetIndex} lost`);
         video.pause();
 
         const allTargetsLost = document.querySelectorAll('a-entity[mindar-image-target]').length === 
                               document.querySelectorAll('a-entity[mindar-image-target][visible="false"]').length;
-
+        
         if (allTargetsLost) {
           trackingOverlay.classList.remove('hidden');
         }
