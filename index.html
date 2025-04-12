@@ -2,60 +2,89 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Modular WebAR with MindAR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebAR Dynamic Aspect Ratio Video Player</title>
+
+  <!-- A-Frame -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+
+  <!-- MindAR -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+
   <style>
     body {
-      margin: 0; padding: 0;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
       position: fixed;
-      width: 100%; height: 100%;
+      width: 100%;
+      height: 100%;
     }
+
     .overlay-container {
       position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      display: flex; flex-direction: column;
-      justify-content: center; align-items: center;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
       background-color: rgba(0, 0, 0, 0.7);
-      z-index: 10; color: white;
+      z-index: 10;
+      color: white;
       font-family: Arial, sans-serif;
     }
+
     .overlay-icon {
-      width: 120px; height: 120px;
+      width: 120px;
+      height: 120px;
       background-color: rgba(0, 150, 0, 0.8);
       border-radius: 50%;
-      display: flex; justify-content: center; align-items: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       margin-bottom: 20px;
     }
+
     .scan-animation {
       border: 4px solid white;
-      width: 80%; height: 140%;
+      width: 80%;
+      height: 140%;
       position: relative;
       border-radius: 10px;
     }
+
     .scan-line {
-      position: absolute; height: 2px; width: 100%;
-      background-color: #00ff00; top: 0;
+      position: absolute;
+      height: 2px;
+      width: 100%;
+      background-color: #00ff00;
+      top: 0;
       animation: scan 2s infinite ease-in-out;
     }
+
     @keyframes scan {
       0% { top: 0; }
       50% { top: 100%; }
       100% { top: 0; }
     }
+
     .qr-hint {
       margin-top: 20px;
       font-size: 18px;
       opacity: 0.9;
     }
-    .hidden { display: none; }
+
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
+
 <body>
-  <!-- Tracking Overlay (shown until a target is found) -->
+  <!-- Overlay shown before target is detected -->
   <div id="tracking-overlay" class="overlay-container">
     <div class="overlay-icon">
       <div class="scan-animation">
@@ -67,76 +96,51 @@
 
   <!-- A-Frame Scene -->
   <a-scene
-    mindar-image="imageTargetSrc: ./targets.mind; 
-                  filterMinCF: 0.0001; 
-                  filterBeta: 0.001; 
-                  missTolerance: 5;"
+    mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001; missTolerance: 5;"
     color-space="sRGB"
-    renderer="colorManagement: true; physicallyCorrectLights: true"
+    renderer="colorManagement: true, physicallyCorrectLights: true"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
 
-    <!-- Camera -->
     <a-camera position="0 0 0" look-controls="enabled: false"
               cursor="fuse: false; rayOrigin: mouse;"
-              raycaster="far: 10000; objects: .clickable">
-    </a-camera>
+              raycaster="far: 10000; objects: .clickable"></a-camera>
 
-    <!-- MindAR Targets: 
-         Each targetIndex corresponds to an item in videoConfig below.
-    -->
-    <a-entity id="target-0" mindar-image-target="targetIndex: 0">
-      <a-entity id="video-container-0" position="0 0 0" rotation="0 0 0">
-        <a-plane
-          id="video-plane-0"
-          class="clickable"
-          position="0 0 0"
-          rotation="0 0 0"
-          material="shader: flat; side: double; transparent: false; opacity: 1">
-        </a-plane>
-      </a-entity>
+    <!-- Target 0 -->
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-plane id="video-plane-0" class="clickable"
+               position="0 0 0" rotation="0 0 0"
+               material="shader: flat; side: double; transparent: true; opacity: 0">
+      </a-plane>
     </a-entity>
 
-    <a-entity id="target-1" mindar-image-target="targetIndex: 1">
-      <a-entity id="video-container-1" position="0 0 0" rotation="0 0 0">
-        <a-plane
-          id="video-plane-1"
-          class="clickable"
-          position="0 0 0"
-          rotation="0 0 0"
-          material="shader: flat; side: double; transparent: false; opacity: 1">
-        </a-plane>
-      </a-entity>
+    <!-- Target 1 -->
+    <a-entity mindar-image-target="targetIndex: 1">
+      <a-plane id="video-plane-1" class="clickable"
+               position="0 0 0" rotation="0 0 0"
+               material="shader: flat; side: double; transparent: true; opacity: 0">
+      </a-plane>
     </a-entity>
-    
-    <!-- Add more targets here if needed -->
-
   </a-scene>
 
   <script>
-    // CONFIGURATION: Each target gets a video, plane ID, and its own width/height (or aspect ratio)
     const videoConfig = [
       {
         targetIndex: 0,
         videoUrl: "./videos/video1.mp4",
-        planeId: "video-plane-0",
-        planeWidth: 1.0,   // Width in "MindAR world" units
-        planeHeight: 0.7   // Height in "MindAR world" units 
+        planeId: "video-plane-0"
       },
       {
         targetIndex: 1,
         videoUrl: "./videos/video2.mp4",
-        planeId: "video-plane-1",
-        // If this target image is 16:9, for instance:
-        planeWidth: 1.0,
-        planeHeight: 0.5625
+        planeId: "video-plane-1"
       }
-      // Additional target objects if needed
     ];
 
-    // Wait for A-Frame to fully load
     window.addEventListener('DOMContentLoaded', function () {
       const sceneEl = document.querySelector('a-scene');
+      const trackingOverlay = document.getElementById('tracking-overlay');
+
       sceneEl.addEventListener('loaded', function () {
         console.log("A-Frame scene loaded");
         videoConfig.forEach(config => {
@@ -144,11 +148,9 @@
         });
       });
 
-      // Pause videos when tab is not active
       document.addEventListener('visibilitychange', function () {
         videoConfig.forEach(config => {
-          const videoElement = document.querySelector(`#${config.planeId}`)
-                                     .getObject3D('mesh').material.map?.image;
+          const videoElement = document.querySelector(`#${config.planeId}`).getObject3D('mesh').material.map?.image;
           if (videoElement && document.hidden) {
             if (!videoElement.paused) videoElement.pause();
           }
@@ -158,17 +160,9 @@
 
     function setupVideoTarget(config) {
       const plane = document.querySelector(`#${config.planeId}`);
-      const targetEntity = document.querySelector(`#target-${config.targetIndex}`);
+      const targetEntity = document.querySelector(`a-entity[mindar-image-target="targetIndex: ${config.targetIndex}"]`);
       const trackingOverlay = document.getElementById('tracking-overlay');
 
-      // Dynamically set plane geometry to avoid distortion
-      plane.setAttribute('geometry', {
-        primitive: 'plane',
-        width: config.planeWidth,
-        height: config.planeHeight
-      });
-
-      // Prepare video element
       const video = document.createElement("video");
       video.src = config.videoUrl;
       video.playsInline = true;
@@ -176,17 +170,14 @@
       video.setAttribute("preload", "auto");
       video.muted = false;
 
-      // Create a Three.js texture from the video
       const texture = new THREE.VideoTexture(video);
       texture.minFilter = THREE.LinearFilter;
       texture.magFilter = THREE.LinearFilter;
       texture.format = THREE.RGBFormat;
 
-      // Assign texture to the plane's material map
       plane.getObject3D('mesh').material.map = texture;
       plane.getObject3D('mesh').material.opacity = 1;
 
-      // iOS/Android Audio: Must unlock via user gesture
       const enableAudio = () => {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const buffer = audioContext.createBuffer(1, 1, 22050);
@@ -197,45 +188,49 @@
         document.removeEventListener('touchstart', enableAudio);
         document.removeEventListener('click', enableAudio);
       };
+
       document.addEventListener('touchstart', enableAudio, { once: true });
       document.addEventListener('click', enableAudio, { once: true });
 
-      // MindAR events
-      targetEntity.addEventListener("targetFound", function () {
-        console.log(`Target ${config.targetIndex} found`);
-        trackingOverlay.classList.add('hidden');
+      video.addEventListener("loadedmetadata", () => {
+        const videoAspectRatio = video.videoHeight / video.videoWidth;
+        const targetWidth = 1;
+        const targetHeight = targetWidth * videoAspectRatio;
 
-        // Attempt to play the video
-        const playPromise = video.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(error => {
-            console.log("Autoplay with audio prevented:", error);
-            // If browser blocked autoplay with audio, re-attempt muted
-            video.muted = true;
-            video.play().then(() => {
-              // Listen for a user gesture to unmute
-              const unmute = () => {
-                video.muted = false;
-                document.removeEventListener('touchstart', unmute);
-                document.removeEventListener('click', unmute);
-              };
-              document.addEventListener('touchstart', unmute, { once: true });
-              document.addEventListener('click', unmute, { once: true });
-            }).catch(err => console.log("Even muted autoplay failed:", err));
-          });
-        }
+        plane.setAttribute("width", targetWidth);
+        plane.setAttribute("height", targetHeight);
+
+        targetEntity.addEventListener("targetFound", function () {
+          console.log(`Target ${config.targetIndex} found`);
+          trackingOverlay.classList.add('hidden');
+
+          const playPromise = video.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(error => {
+              console.log("Autoplay with audio prevented:", error);
+              video.muted = true;
+              video.play().then(() => {
+                const unmute = () => {
+                  video.muted = false;
+                  document.removeEventListener('touchstart', unmute);
+                  document.removeEventListener('click', unmute);
+                };
+                document.addEventListener('touchstart', unmute, { once: true });
+                document.addEventListener('click', unmute, { once: true });
+              }).catch(err => console.log("Even muted autoplay failed:", err));
+            });
+          }
+        });
       });
 
       targetEntity.addEventListener("targetLost", function () {
         console.log(`Target ${config.targetIndex} lost`);
         video.pause();
 
-        // If all targets are lost, show the overlay again
-        const allTargets = document.querySelectorAll('a-entity[mindar-image-target]');
-        const hiddenTargets = Array.from(allTargets).filter(
-          t => t.getAttribute('visible') === 'false'
-        );
-        if (allTargets.length === hiddenTargets.length) {
+        const allTargetsLost = document.querySelectorAll('a-entity[mindar-image-target]').length === 
+                              document.querySelectorAll('a-entity[mindar-image-target][visible="false"]').length;
+
+        if (allTargetsLost) {
           trackingOverlay.classList.remove('hidden');
         }
       });
