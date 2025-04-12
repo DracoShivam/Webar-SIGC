@@ -1,4 +1,5 @@
-![Screenshot 2025-04-10 195922](https://github.com/user-attachments/assets/f47c74b8-3379-47cd-8cc6-2d14d3268baa)
+
+![SIGC AR ad pdf](https://github.com/user-attachments/assets/6b6fe1a0-a643-4aa6-b24d-a4d0a68694d0)
 
 
 Scan this image to get to the website and play the video
