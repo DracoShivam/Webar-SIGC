@@ -1,5 +1,5 @@
+![TiE Sandhai Banner image](https://github.com/user-attachments/assets/5eb2d2c4-4234-4fa4-8561-9e04ea61119a)
 
-![SIGC AR ad pdf](https://github.com/user-attachments/assets/6b6fe1a0-a643-4aa6-b24d-a4d0a68694d0)
 
 
 Scan this image to get to the website and play the video
