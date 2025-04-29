@@ -1,170 +1,101 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MindAR Simple AR Video</title>
-
-  <!-- A-Frame and MindAR -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
-
-  <style>
-    body, html {
-      margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%;
-    }
-    #tracking-overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.7); color: white;
-      display: flex; justify-content: center; align-items: center;
-      font-family: Arial, sans-serif; z-index: 10;
-    }
-    .hidden { display: none; }
-  </style>
-</head>
-
-<body>
-
-<!-- Loading Overlay -->
-<div id="tracking-overlay">
-  Point your camera at the poster
-</div>
-
-<!-- A-Frame Scene -->
-<a-scene
-  mindar-image="imageTargetSrc: ./targets.mind; physicalWidth: 0.856001;"
-  color-space="sRGB"
-  renderer="colorManagement: true, physicallyCorrectLights: true"
-  vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: false">
-
-  <!-- Camera -->
-  <a-camera position="0 0 0" look-controls="enabled: false"
-    cursor="rayOrigin: mouse" raycaster="far: 10000; objects: .clickable">
-  </a-camera>
-
-  <!-- Target 0 -->
-  <a-entity mindar-image-target="targetIndex: 0">
-    <a-plane id="video-plane-0" class="clickable"
-      position="0 0 0" rotation="0 0 0"
-      material="shader: flat; side: double; transparent: true; opacity: 0">
-    </a-plane>
-  </a-entity>
-
-  <!-- Target 1 -->
-  <a-entity mindar-image-target="targetIndex: 1">
-    <a-plane id="video-plane-1" class="clickable"
-      position="0 0 0" rotation="0 0 0"
-      material="shader: flat; side: double; transparent: true; opacity: 0">
-    </a-plane>
-  </a-entity>
-
-</a-scene>
-
-<script>
-const videoConfig = [
-  {
-    targetIndex: 0,
-    videoUrl: "./videos/video1.mp4",
-    planeId: "video-plane-0"
-  },
-  {
-    targetIndex: 1,
-    videoUrl: "./videos/video2.mp4",
-    planeId: "video-plane-1"
-  }
-];
-
-window.addEventListener('DOMContentLoaded', function () {
-  const sceneEl = document.querySelector('a-scene');
-  const trackingOverlay = document.getElementById('tracking-overlay');
-
-  sceneEl.addEventListener('loaded', function () {
-    videoConfig.forEach(config => {
-      setupVideoTarget(config);
-    });
-  });
-
-  // Pause videos when tab hidden
-  document.addEventListener('visibilitychange', function () {
-    videoConfig.forEach(config => {
-      const videoElement = document.querySelector(`#${config.planeId}`).getObject3D('mesh')?.material.map?.image;
-      if (videoElement && document.hidden && !videoElement.paused) {
-        videoElement.pause();
+<html>
+  <head>
+    <title>AR Poster Scanner</title>
+    <meta charset="utf-8" />
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+      body, html {
+        margin: 0;
+        overflow: hidden;
+        font-family: sans-serif;
+        background-color: black;
       }
-    });
-  });
-});
 
-function setupVideoTarget(config) {
-  const plane = document.querySelector(`#${config.planeId}`);
-  const targetEntity = document.querySelector(`a-entity[mindar-image-target="targetIndex: ${config.targetIndex}"]`);
-  const trackingOverlay = document.getElementById('tracking-overlay');
+      #tracking-overlay {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 24px;
+        text-align: center;
+        z-index: 10;
+        background-color: rgba(0, 0, 0, 0.4);
+        padding: 20px;
+        border-radius: 10px;
+      }
 
-  const video = document.createElement("video");
-  video.src = config.videoUrl;
-  video.playsInline = true;
-  video.loop = true;
-  video.preload = "auto";
-  video.muted = false;
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="tracking-overlay">Point your camera at the poster</div>
 
-  const texture = new THREE.VideoTexture(video);
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.format = THREE.RGBFormat;
+    <a-scene mindar-image="imageTargetSrc: targets.mind; autoStart: true;" embedded color-space="sRGB" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true">
+      <a-assets>
+        <video id="video0" src="video0.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline></video>
+      </a-assets>
 
-  plane.getObject3D('mesh').material.map = texture;
-  plane.getObject3D('mesh').material.opacity = 1;
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-  // Audio unlock
-  const unlockAudio = () => {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const buffer = ctx.createBuffer(1, 1, 22050);
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(ctx.destination);
-    source.start(0);
-    document.removeEventListener('touchstart', unlockAudio);
-    document.removeEventListener('click', unlockAudio);
-  };
-  document.addEventListener('touchstart', unlockAudio, { once: true });
-  document.addEventListener('click', unlockAudio, { once: true });
+      <a-entity mindar-image-target="targetIndex: 0">
+        <a-plane id="video-plane" position="0 0 -0.01" rotation="0 0 0" material="shader: flat; src: #video0; transparent: true; opacity: 0;"></a-plane>
+      </a-entity>
+    </a-scene>
 
-  // Events
-  targetEntity.addEventListener("targetFound", () => {
-    console.log(`Target ${config.targetIndex} found`);
-    trackingOverlay.classList.add('hidden');
+    <script>
+      const physicalWidth = 85.6001;  // in cm
+      const physicalHeight = 206.6001; // in cm
 
-    const targetWidth = 0.856001; // meters
-    const targetHeight = 2.066001; // meters
+      const targetEntity = document.querySelector('[mindar-image-target="targetIndex: 0"]');
+      const video = document.querySelector("#video0");
+      const plane = document.querySelector("#video-plane");
+      const trackingOverlay = document.getElementById("tracking-overlay");
 
-    plane.setAttribute("width", targetWidth);
-    plane.setAttribute("height", targetHeight);
+      targetEntity.addEventListener("targetFound", () => {
+        console.log("Target found");
 
-    const playPromise = video.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {
-        video.muted = true;
-        video.play().then(() => {
-          document.addEventListener('touchstart', () => { video.muted = false; }, { once: true });
-          document.addEventListener('click', () => { video.muted = false; }, { once: true });
-        });
+        // Hide overlay immediately
+        trackingOverlay.classList.add("hidden");
+
+        // Set correct aspect ratio
+        const ratio = physicalHeight / physicalWidth;
+        const targetWidth = 1; // unit A-Frame scale
+        const targetHeight = targetWidth * ratio;
+
+        plane.setAttribute("width", targetWidth);
+        plane.setAttribute("height", targetHeight);
+        plane.setAttribute("rotation", "0 0 0");
+        plane.getObject3D("mesh").material.opacity = 1;
+
+        // Try to autoplay
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            video.muted = true;
+            video.play().then(() => {
+              document.addEventListener("touchstart", () => {
+                video.muted = false;
+              }, { once: true });
+
+              document.addEventListener("click", () => {
+                video.muted = false;
+              }, { once: true });
+            });
+          });
+        }
       });
-    }
-  });
 
-  targetEntity.addEventListener("targetLost", () => {
-    console.log(`Target ${config.targetIndex} lost`);
-    video.pause();
-
-    const visibleTargets = Array.from(document.querySelectorAll('a-entity[mindar-image-target]'))
-      .filter(el => el.object3D.visible);
-    if (visibleTargets.length === 0) {
-      trackingOverlay.classList.remove('hidden');
-    }
-  });
-}
-</script>
-
-</body>
+      targetEntity.addEventListener("targetLost", () => {
+        console.log("Target lost");
+        video.pause();
+        video.currentTime = 0;
+        plane.getObject3D("mesh").material.opacity = 0;
+      });
+    </script>
+  </body>
 </html>
