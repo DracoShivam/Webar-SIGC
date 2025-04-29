@@ -1,101 +1,335 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>AR Poster Scanner</title>
-    <meta charset="utf-8" />
-    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
-    <style>
-      body, html {
-        margin: 0;
-        overflow: hidden;
-        font-family: sans-serif;
-        background-color: black;
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebAR Image Tracking Video Player for Large Format Poster</title>
+
+  <!-- Import A-Frame -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+
+  <!-- Import MindAR Image Tracking -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+    }
+    
+    /* Overlay styles */
+    .overlay-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: rgba(0, 0, 0, 0.7);
+      z-index: 10;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    
+    .overlay-icon {
+      width: 120px;
+      height: 120px;
+      background-color: rgba(0, 150, 0, 0.8);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .scan-animation {
+      border: 4px solid white;
+      width: 80%;
+      height: 140%;
+      position: relative;
+      border-radius: 10px;
+    }
+    
+    .scan-line {
+      position: absolute;
+      height: 2px;
+      width: 100%;
+      background-color: #00ff00;
+      top: 0;
+      animation: scan 2s infinite ease-in-out;
+    }
+    
+    @keyframes scan {
+      0% { top: 0; }
+      50% { top: 100%; }
+      100% { top: 0; }
+    }
+    
+    .poster-hint {
+      margin-top: 20px;
+      font-size: 18px;
+      opacity: 0.9;
+      text-align: center;
+      padding: 0 20px;
+    }
+    
+    .debug-info {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      color: white;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 5px;
+      font-size: 12px;
+      z-index: 100;
+      display: none;
+    }
+    
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Overlay that shows before target recognition -->
+  <div id="tracking-overlay" class="overlay-container">
+    <div class="overlay-icon">
+      <div class="scan-animation">
+        <div class="scan-line"></div>
+      </div>
+    </div>
+    <div class="poster-hint">Point your camera at the large poster (85.6 x 206.6 cm)</div>
+  </div>
+  
+  <!-- Debug information panel -->
+  <div id="debug-info" class="debug-info"></div>
+
+  <!-- A-Frame Scene -->
+  <a-scene
+    mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001; missTolerance: 5;"
+    color-space="sRGB"
+    renderer="colorManagement: true; physicallyCorrectLights: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+
+    <!-- Camera -->
+    <a-camera position="0 0 0" look-controls="enabled: false"
+              cursor="fuse: false; rayOrigin: mouse;"
+              raycaster="far: 10000; objects: .clickable"></a-camera>
+
+    <!-- Target #0 - Modified for large poster -->
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-plane
+        id="video-plane-0"
+        class="clickable"
+        position="0 0 0"
+        rotation="0 0 0"
+        material="shader: flat; side: double; transparent: true; opacity: 0">
+      </a-plane>
+    </a-entity>
+
+    <!-- Target #1 - Modified for large poster -->
+    <a-entity mindar-image-target="targetIndex: 1">
+      <a-plane
+        id="video-plane-1"
+        class="clickable"
+        position="0 0 0"
+        rotation="0 0 0"
+        material="shader: flat; side: double; transparent: true; opacity: 0">
+      </a-plane>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    // Poster specific configuration
+    const POSTER_WIDTH_CM = 85.6001;
+    const POSTER_HEIGHT_CM = 206.6001;
+    const POSTER_WIDTH_PX = 10800;
+    const POSTER_HEIGHT_PX = 13900;
+    const POSTER_ASPECT_RATIO = POSTER_HEIGHT_CM / POSTER_WIDTH_CM; // Approximately 2.414
+
+    const videoConfig = [
+      {
+        targetIndex: 0,
+        videoUrl: "./videos/video1.mp4",
+        planeId: "video-plane-0"
+      },
+      {
+        targetIndex: 1,
+        videoUrl: "./videos/video2.mp4",
+        planeId: "video-plane-1"
+      }
+    ];
+
+    window.addEventListener('DOMContentLoaded', function () {
+      const sceneEl = document.querySelector('a-scene');
+      const trackingOverlay = document.getElementById('tracking-overlay');
+      const debugInfo = document.getElementById('debug-info');
+      
+      // Set debug mode - change to true if needed
+      const DEBUG_MODE = false;
+      if (DEBUG_MODE) {
+        debugInfo.style.display = 'block';
+        debugInfo.textContent = `Poster: ${POSTER_WIDTH_CM}cm x ${POSTER_HEIGHT_CM}cm | Aspect ratio: ${POSTER_ASPECT_RATIO.toFixed(3)}`;
       }
 
-      #tracking-overlay {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: white;
-        font-size: 24px;
-        text-align: center;
-        z-index: 10;
-        background-color: rgba(0, 0, 0, 0.4);
-        padding: 20px;
-        border-radius: 10px;
-      }
+      // Initialize tracking state
+      let targetsFound = videoConfig.map(() => false);
+      
+      sceneEl.addEventListener('loaded', function () {
+        console.log("A-Frame scene loaded");
 
-      .hidden {
-        display: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="tracking-overlay">Point your camera at the poster</div>
+        videoConfig.forEach(config => {
+          setupVideoTarget(config);
+        });
+      });
 
-    <a-scene mindar-image="imageTargetSrc: targets.mind; autoStart: true;" embedded color-space="sRGB" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true">
-      <a-assets>
-        <video id="video0" src="video0.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline></video>
-      </a-assets>
+      document.addEventListener('visibilitychange', function () {
+        videoConfig.forEach(config => {
+          const videoElement = document.querySelector(`#${config.planeId}`).getObject3D('mesh').material.map?.image;
+          if (videoElement && document.hidden) {
+            if (!videoElement.paused) videoElement.pause();
+          }
+        });
+      });
+    });
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    function setupVideoTarget(config) {
+      const plane = document.querySelector(`#${config.planeId}`);
+      const targetEntity = document.querySelector(`a-entity[mindar-image-target="targetIndex: ${config.targetIndex}"]`);
+      const trackingOverlay = document.getElementById('tracking-overlay');
+      const debugInfo = document.getElementById('debug-info');
 
-      <a-entity mindar-image-target="targetIndex: 0">
-        <a-plane id="video-plane" position="0 0 -0.01" rotation="0 0 0" material="shader: flat; src: #video0; transparent: true; opacity: 0;"></a-plane>
-      </a-entity>
-    </a-scene>
+      const video = document.createElement("video");
+      video.src = config.videoUrl;
+      video.playsInline = true;
+      video.loop = true;
+      video.setAttribute("preload", "auto");
+      video.muted = false; // Ensure audio is not muted by default
 
-    <script>
-      const physicalWidth = 85.6001;  // in cm
-      const physicalHeight = 206.6001; // in cm
+      // Create video texture
+      const texture = new THREE.VideoTexture(video);
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.format = THREE.RGBFormat;
 
-      const targetEntity = document.querySelector('[mindar-image-target="targetIndex: 0"]');
-      const video = document.querySelector("#video0");
-      const plane = document.querySelector("#video-plane");
-      const trackingOverlay = document.getElementById("tracking-overlay");
+      // Apply video texture to plane
+      plane.getObject3D('mesh').material.map = texture;
+      plane.getObject3D('mesh').material.opacity = 1;
 
-      targetEntity.addEventListener("targetFound", () => {
-        console.log("Target found");
+      // Handle audio context activation
+      const enableAudio = () => {
+        // Create a temporary audio context to unlock audio on iOS
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // Create and immediately play a short silent buffer
+        const buffer = audioContext.createBuffer(1, 1, 22050);
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+        
+        // Remove the audio activation event listeners
+        document.removeEventListener('touchstart', enableAudio);
+        document.removeEventListener('click', enableAudio);
+      };
+      
+      // Add event listeners for user interaction to enable audio
+      document.addEventListener('touchstart', enableAudio, { once: true });
+      document.addEventListener('click', enableAudio, { once: true });
 
-        // Hide overlay immediately
-        trackingOverlay.classList.add("hidden");
-
-        // Set correct aspect ratio
-        const ratio = physicalHeight / physicalWidth;
-        const targetWidth = 1; // unit A-Frame scale
-        const targetHeight = targetWidth * ratio;
-
-        plane.setAttribute("width", targetWidth);
-        plane.setAttribute("height", targetHeight);
-        plane.setAttribute("rotation", "0 0 0");
-        plane.getObject3D("mesh").material.opacity = 1;
-
-        // Try to autoplay
+      // Handle target found event
+      targetEntity.addEventListener("targetFound", function () {
+        console.log(`Target ${config.targetIndex} found`);
+        trackingOverlay.classList.add('hidden');
+        
+        // Wait for video metadata to load to get accurate dimensions
+        if (video.readyState >= 2) { // HAVE_CURRENT_DATA or better
+          setVideoDimensions();
+        } else {
+          video.addEventListener('loadedmetadata', setVideoDimensions);
+        }
+        
+        function setVideoDimensions() {
+          // Calculate video aspect ratio
+          const videoRatio = video.videoHeight / video.videoWidth;
+          
+          // For large format posters, we need to decide how to fit the video:
+          // 1. Match the width and scale height (better for landscape videos)
+          // 2. Match the height and scale width (better for portrait videos)
+          // 3. Fit inside while maintaining aspect ratio (safest option)
+          
+          let planeWidth, planeHeight;
+          
+          if (videoRatio >= POSTER_ASPECT_RATIO) {
+            // Video is more portrait than the poster, match height and scale width
+            planeHeight = 1; // Use 1 unit height in A-Frame
+            planeWidth = planeHeight / videoRatio;
+          } else {
+            // Video is more landscape than the poster, match width and scale height
+            planeWidth = 1; // Use 1 unit width in A-Frame
+            planeHeight = planeWidth * videoRatio;
+          }
+          
+          // Set dimensions while maintaining video aspect ratio
+          plane.setAttribute("width", planeWidth);
+          plane.setAttribute("height", planeHeight);
+          
+          if (debugInfo.style.display === 'block') {
+            debugInfo.textContent += ` | Video: ${video.videoWidth}x${video.videoHeight} | AR: ${videoRatio.toFixed(3)} | Plane: ${planeWidth.toFixed(3)}x${planeHeight.toFixed(3)}`;
+          }
+        }
+        
+        // Try to play with audio enabled
         const playPromise = video.play();
         if (playPromise !== undefined) {
-          playPromise.catch(() => {
+          playPromise.catch(error => {
+            console.log("Autoplay with audio prevented:", error);
+            // If autoplay with audio fails, try muted first then unmute
             video.muted = true;
             video.play().then(() => {
-              document.addEventListener("touchstart", () => {
+              // Try to unmute after user interaction
+              const unmute = () => {
                 video.muted = false;
-              }, { once: true });
-
-              document.addEventListener("click", () => {
-                video.muted = false;
-              }, { once: true });
-            });
+                document.removeEventListener('touchstart', unmute);
+                document.removeEventListener('click', unmute);
+              };
+              document.addEventListener('touchstart', unmute, { once: true });
+              document.addEventListener('click', unmute, { once: true });
+            }).catch(err => console.log("Even muted autoplay failed:", err));
           });
         }
       });
 
-      targetEntity.addEventListener("targetLost", () => {
-        console.log("Target lost");
+      targetEntity.addEventListener("targetLost", function () {
+        console.log(`Target ${config.targetIndex} lost`);
         video.pause();
-        video.currentTime = 0;
-        plane.getObject3D("mesh").material.opacity = 0;
+        
+        // Check if all targets are lost to show overlay again
+        const allTargetsLost = !Array.from(document.querySelectorAll('a-entity[mindar-image-target]'))
+                                    .some(el => el.object3D.visible);
+        
+        if (allTargetsLost) {
+          trackingOverlay.classList.remove('hidden');
+        }
       });
-    </script>
-  </body>
+      
+      // Add click/touch interaction to toggle play/pause
+      plane.addEventListener('click', function() {
+        if (video.paused) {
+          video.play();
+        } else {
+          video.pause();
+        }
+      });
+    }
+  </script>
+</body>
 </html>
