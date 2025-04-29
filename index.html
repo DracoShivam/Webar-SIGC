@@ -218,9 +218,9 @@
         trackingOverlay.classList.add('hidden');
         
         // Get target dimensions from the image-target system
-        const imageRatio = video.videoHeight / video.videoWidth || 16/9; // Default ratio if video metadata not loaded
-        const targetWidth = 1;
-        const targetHeight = targetWidth * imageRatio;
+        const imageRatio = video.videoHeight / video.videoWidth; // Default ratio if video metadata not loaded
+        const targetWidth = 2.06;
+        const targetHeight = 0.856001;
         
         // Set video plane dimensions to match target exactly
         plane.setAttribute("width", targetWidth);
