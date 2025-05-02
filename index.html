@@ -218,10 +218,9 @@
         clearTimeout(lostTimeout);
         trackingOverlay.classList.add('hidden');
 
-        const imageRatio = video.videoHeight / video.videoWidth;
-        const targetWidth = 0.856001;
-        const targetHeight = 2.06001;
-
+        const imageRatio = video.videoHeight / video.videoWidth || 16/9; // Default ratio if video metadata not loaded
+        const targetWidth = 1;
+        const targetHeight = targetWidth * imageRatio;
         plane.setAttribute("width", targetWidth);
         plane.setAttribute("height", targetHeight);
 
