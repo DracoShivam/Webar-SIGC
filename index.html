@@ -97,7 +97,7 @@
 
   <!-- A-Frame Scene -->
   <a-scene
-    mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001; missTolerance: 5;"
+    mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.01; filterBeta: 0.1; missTolerance: 5;"
     color-space="sRGB"
     renderer="colorManagement: true, physicallyCorrectLights: true"
     vr-mode-ui="enabled: false"
@@ -217,7 +217,7 @@
         console.log(`Target ${config.targetIndex} found`);
         trackingOverlay.classList.add('hidden');
         
-        // Get target dimensions from the image-target system
+        // Get target dimensions from the image-target system || IMPORTANT
         const imageRatio = video.videoHeight / video.videoWidth; // Default ratio if video metadata not loaded
         const targetWidth = 0.856001;
         const targetHeight = 2.06001;
